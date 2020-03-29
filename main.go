@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"go-ntoon-downloader/image"
+	"go-ntoon-downloader/content"
+	"go-ntoon-downloader/detail"
 	"go-ntoon-downloader/list"
 	"go-ntoon-downloader/metadata"
 	"go-ntoon-downloader/viewer"
@@ -103,18 +104,47 @@ func cloner(in <-chan list.Entry, out1, out2 chan<- list.Entry) {
 func downloadEntryWorker(wg *sync.WaitGroup, toonId int, ch <-chan list.Entry, errCh chan<- error) {
 	defer wg.Done()
 	for entry := range ch {
+		d := detail.Loader{
+			DetailUrl:    entry.DetailUrl,
+		}
+		urls, err := d.GetUrls()
+		if err != nil {
+			errCh <- err
+			continue
+		}
+
 		dirName := fmt.Sprintf("result/%d/%d/", toonId, entry.Number)
-		err := os.MkdirAll(dirName, 0700)
+		err = os.MkdirAll(dirName, 0700)
 		if err != nil {
 			errCh <- errors.Wrapf(err, "failed to make directory %s", dirName)
 			continue
 		}
-		l := image.Loader{
-			DetailUrl:    entry.DetailUrl,
+
+		c := content.Loader{
+			ImageUrls:    urls,
 			DownloadPath: dirName,
 			Parallelism:  8,
 		}
-		l.Run(errCh)
+		c.Run(errCh)
+
+		f := viewer.Files{
+			BasePath: dirName,
+		}
+		filenames := make([]string, len(urls))
+		for i, s := range urls {
+			u, err := url.Parse(s)
+			if err != nil {
+				continue
+			}
+			_, name := path.Split(u.Path)
+			filenames[i] = name
+		}
+		err = f.Write(filenames)
+		if err != nil {
+			errCh <- err
+			continue
+		}
+
 		atomic.AddInt32(&downloadCount, 1)
 	}
 }
@@ -151,10 +181,10 @@ func viewerGenerateWorker(wg *sync.WaitGroup, id int, ch <-chan list.Entry, errC
 		return info.Entries[i].Number < info.Entries[j].Number
 	})
 
-	m := viewer.Renderer{
+	m := viewer.Meta{
 		BasePath: fmt.Sprintf("result/%d/", id),
 	}
-	err = m.WriteMeta(info)
+	err = m.Write(info)
 	if err != nil {
 		errCh <- err
 	}

@@ -1,0 +1,5 @@
+var files = [
+    {{- range . }}
+    {{ quoteStr . }},
+    {{- end }}
+];
