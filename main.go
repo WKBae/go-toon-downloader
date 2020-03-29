@@ -5,7 +5,12 @@ import (
 	"github.com/pkg/errors"
 	"go-ntoon-downloader/image"
 	"go-ntoon-downloader/list"
+	"go-ntoon-downloader/metadata"
+	"go-ntoon-downloader/viewer"
+	"net/url"
 	"os"
+	"path"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,25 +22,30 @@ var downloadCount int32
 func main() {
 	errCh := make(chan error)
 	go errorLogger(errCh)
+
 	toonId := 12345
 	l := list.Loader{
 		TitleId:     toonId,
 		Parallelism: 2,
 	}
 	entryCh := l.Start(errCh)
-	downloadCh := make(chan list.Entry)
-
-	go bufferingWorker(entryCh, downloadCh)
+	ch1 := make(chan list.Entry)
+	go bufferingWorker(entryCh, ch1)
+	ch21 := make(chan list.Entry)
+	ch22 := make(chan list.Entry)
+	go cloner(ch1, ch21, ch22)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 4; i++ {
 		wg.Add(1)
-		go downloadEntryWorker(wg, toonId, downloadCh, errCh)
+		go downloadEntryWorker(wg, toonId, ch21, errCh)
 	}
+	wg.Add(1)
+	go viewerGenerateWorker(wg, toonId, ch22, errCh)
 	go reportingWorker()
 	wg.Wait()
 
-	fmt.Println("Finished! Downloaded:", downloadCount)
+	fmt.Println("\nFinished! Downloaded:", downloadCount)
 }
 
 func errorLogger(ch <-chan error) {
@@ -70,6 +80,26 @@ BufferLoop:
 	close(out)
 }
 
+func cloner(in <-chan list.Entry, out1, out2 chan<- list.Entry) {
+	for entry := range in {
+		var sent1, sent2 = false, false
+		select {
+		case out1 <- entry:
+			sent1 = true
+		case out2 <- entry:
+			sent2 = true
+		}
+		if !sent1 {
+			out1 <- entry
+		}
+		if !sent2 {
+			out2 <- entry
+		}
+	}
+	close(out1)
+	close(out2)
+}
+
 func downloadEntryWorker(wg *sync.WaitGroup, toonId int, ch <-chan list.Entry, errCh chan<- error) {
 	defer wg.Done()
 	for entry := range ch {
@@ -86,6 +116,47 @@ func downloadEntryWorker(wg *sync.WaitGroup, toonId int, ch <-chan list.Entry, e
 		}
 		l.Run(errCh)
 		atomic.AddInt32(&downloadCount, 1)
+	}
+}
+
+func viewerGenerateWorker(wg *sync.WaitGroup, id int, ch <-chan list.Entry, errCh chan<- error) {
+	defer wg.Done()
+
+	meta, err := metadata.Get(id)
+	if err != nil {
+		errCh <- err
+		meta = metadata.Metadata{Id: id}
+	}
+	info := viewer.Info{
+		Id:          id,
+		Title:       meta.Title,
+		Author:      meta.Author,
+		Description: meta.Description,
+	}
+
+	for entry := range ch {
+		var thumbName string
+		if u, err := url.Parse(entry.ThumbnailUrl); err == nil {
+			_, thumbName = path.Split(u.Path)
+		}
+		ent := viewer.Entry{
+			Number:            entry.Number,
+			Title:             entry.Title,
+			Path:              fmt.Sprintf("%d/", entry.Number),
+			ThumbnailFileName: thumbName,
+		}
+		info.Entries = append(info.Entries, ent)
+	}
+	sort.Slice(info.Entries, func(i, j int) bool {
+		return info.Entries[i].Number < info.Entries[j].Number
+	})
+
+	m := viewer.Renderer{
+		BasePath: fmt.Sprintf("result/%d/", id),
+	}
+	err = m.WriteMeta(info)
+	if err != nil {
+		errCh <- err
 	}
 }
 

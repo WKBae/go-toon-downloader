@@ -1,0 +1,17 @@
+var info = {
+    "id": {{ .Id }},
+    "title": {{ quoteStr .Title }},
+    "author": {{ quoteStr .Author }},
+    "description": {{ quoteStr .Description }},
+};
+
+var entries = [
+    {{- range .Entries }}
+    {
+        "no": {{ .Number }},
+        "path": {{ quoteStr .Path }},
+        "thumb": {{ quoteStr .ThumbnailFileName }},
+        "title": {{ quoteStr .Title }},
+    },
+    {{- end }}
+];
