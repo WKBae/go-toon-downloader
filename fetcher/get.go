@@ -25,26 +25,26 @@ func backoffTime(base time.Duration, retries int) time.Duration {
 	return time.Duration(dur)
 }
 
-func Get(url string) (*http.Response, error) {
+func Do(req *http.Request) (*http.Response, error) {
 	var (
 		resp *http.Response
 		err  error
 	)
 	for trial := 0; trial < maxRetries; trial++ {
-		resp, err = HttpClient.Get(url)
+		resp, err = HttpClient.Do(req)
 		if err != nil || resp.StatusCode/100 == 5 {
 			time.Sleep(backoffTime(50*time.Millisecond, trial))
 			continue
 		}
 		if resp.StatusCode != 200 {
 			_ = resp.Body.Close()
-			return nil, errors.New(fmt.Sprintf("server responded \"%s\" with status: %s", url, resp.Status))
+			return nil, errors.New(fmt.Sprintf("server responded \"%s\" with status: %s", req.URL.String(), resp.Status))
 		}
 		return resp, err
 	}
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "error while getting resource \"%s\"", url)
+		return nil, errors.Wrapf(err, "error while requesting \"%s\"", req.URL.String())
 	} else if resp.StatusCode != 200 {
 		_ = resp.Body.Close()
 		return nil, errors.New(fmt.Sprintf("failed to fetch after %d retries: %s", maxRetries, resp.Status))
@@ -52,7 +52,31 @@ func Get(url string) (*http.Response, error) {
 	return resp, err
 }
 
-func GetTo(url string, w io.WriteSeeker) error {
+func Get(url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return Do(req)
+}
+
+func GetTo(url string, w io.WriteSeeker, existingSize int64) error {
+	if existingSize > 0 {
+		req, err := http.NewRequest("HEAD", url, nil)
+		if err != nil {
+			return err
+		}
+		resp, err := Do(req)
+		if err != nil {
+			return err
+		}
+		_ = resp.Body.Close()
+		// assume same if size matches
+		if resp.ContentLength == existingSize {
+			return nil
+		}
+	}
+
 	var err error
 	for trial := 0; trial < maxRetries; trial++ {
 		var resp *http.Response

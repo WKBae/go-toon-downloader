@@ -64,12 +64,16 @@ func (l Loader) downloadWorker(wg *sync.WaitGroup, downloadCh <-chan string, err
 func (l Loader) downloadFile(url string) error {
 	_, name := path.Split(url)
 	fileName := path.Join(l.DownloadPath, name)
-	file, err := os.Create(fileName)
+	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create file \"%s\"", fileName)
+		return errors.Wrapf(err, "failed to open file \"%s\"", fileName)
 	}
 
-	err = fetcher.GetTo(url, file)
+	stat, err := file.Stat()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get stat of file \"%s\"", fileName)
+	}
+	err = fetcher.GetTo(url, file, stat.Size())
 	if err != nil {
 		return err
 	}
