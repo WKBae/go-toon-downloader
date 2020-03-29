@@ -2,6 +2,8 @@
 
 package fetcher
 
+import "strings"
+
 func isDisconnectedError(err error) bool {
 	if err != nil {
 		return false

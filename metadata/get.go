@@ -2,19 +2,20 @@ package metadata
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/pkg/errors"
-	"go-ntoon-downloader/fetcher"
-	"golang.org/x/net/html"
 	"net/url"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/pkg/errors"
+	"github.com/wkbae/go-toon-downloader/fetcher"
+	"golang.org/x/net/html"
 )
 
 type Metadata struct {
-	Id          int
-	Title       string
-	Author      string
-	Description string
+	Id           int
+	Title        string
+	Author       string
+	Description  string
 	ThumbnailUrl string
 }
 

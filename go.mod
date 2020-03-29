@@ -1,4 +1,4 @@
-module go-ntoon-downloader
+module github.com/wkbae/go-toon-downloader
 
 go 1.13
 

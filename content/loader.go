@@ -1,15 +1,16 @@
 package content
 
 import (
-	"github.com/pkg/errors"
-	"go-ntoon-downloader/fetcher"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/pkg/errors"
+	"github.com/wkbae/go-toon-downloader/fetcher"
 )
 
 type Loader struct {
-	ImageUrls []string
+	ImageUrls    []string
 	DownloadPath string
 	Parallelism  int
 }

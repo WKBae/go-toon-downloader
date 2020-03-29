@@ -13,5 +13,5 @@ type Entry struct {
 	Title             string
 	Path              string
 	ThumbnailFileName string
-	ContentFileNames []string
+	ContentFileNames  []string
 }

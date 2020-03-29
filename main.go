@@ -2,12 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"go-ntoon-downloader/content"
-	"go-ntoon-downloader/detail"
-	"go-ntoon-downloader/list"
-	"go-ntoon-downloader/metadata"
-	"go-ntoon-downloader/viewer"
 	"net/url"
 	"os"
 	"path"
@@ -15,6 +9,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/wkbae/go-toon-downloader/content"
+	"github.com/wkbae/go-toon-downloader/detail"
+	"github.com/wkbae/go-toon-downloader/list"
+	"github.com/wkbae/go-toon-downloader/metadata"
+	"github.com/wkbae/go-toon-downloader/viewer"
 )
 
 var entryCount int32
@@ -105,7 +106,7 @@ func downloadEntryWorker(wg *sync.WaitGroup, toonId int, ch <-chan list.Entry, e
 	defer wg.Done()
 	for entry := range ch {
 		d := detail.Loader{
-			DetailUrl:    entry.DetailUrl,
+			DetailUrl: entry.DetailUrl,
 		}
 		urls, err := d.GetUrls()
 		if err != nil {

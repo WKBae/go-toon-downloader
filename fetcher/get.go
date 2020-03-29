@@ -3,13 +3,14 @@ package fetcher
 import (
 	"bufio"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"math/rand"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const maxRetries = 10

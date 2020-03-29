@@ -1,14 +1,15 @@
 package detail
 
 import (
+	"net/url"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"go-ntoon-downloader/fetcher"
-	"net/url"
+	"github.com/wkbae/go-toon-downloader/fetcher"
 )
 
 type Loader struct {
-	DetailUrl    string
+	DetailUrl string
 }
 
 func (l Loader) GetUrls() ([]string, error) {

@@ -1,9 +1,10 @@
 package viewer
 
 import (
-	"github.com/pkg/errors"
 	"os"
 	"path"
+
+	"github.com/pkg/errors"
 )
 
 type Meta struct {
